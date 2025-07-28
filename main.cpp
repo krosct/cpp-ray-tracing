@@ -82,53 +82,15 @@ Vector refractiveComponent(const vector<Hittable*>& objList, const vector<Light:
     // I = Exterior -> OBJ
     // N = OBJ -> Exterior
 
+    // double Nzao = destinyRefraction/originRefraction;
     double Nzao = originRefraction / destinyRefraction;
     double cosTeta = dot(N, L);
     double cosTetaT = sqrt(1 - ( (Nzao * Nzao) * (1 - (cosTeta * cosTeta)) ));
     if (cosTeta < 0) { cosTetaT = -cosTetaT; }
     Vector T = ( Nzao * (-1 * L) ) + ( (Nzao * cosTeta) - (cosTetaT) ) * N;
-    Vector antiBug = N * (cosTeta > 0 ? -1 : 1);
-    Vector refraction_contrib = phongColour(objList, pontualLights, ambientLight, hitPoint, Ray(hitPoint + antiBug * t_min, T), ++recursionDepth) * destinyRefraction;
-    // ! VERIFICAR SE KT TEM QUE MULTIPLICAR REALMENTE PELO VECTOR refraction_contrib NA LINHA ACIMA
+    Vector antiBug = N * (cosTeta > 0 ? 1 : -1);
+    Vector refraction_contrib = phongColour(objList, pontualLights, ambientLight, hitPoint, Ray(hitPoint + antiBug * t_min, T), ++recursionDepth);
     return refraction_contrib;
-
-    // double cosTeta = dot((-1 * V), N);
-    // double senTeta = sqrt(1 - (cosTeta * cosTeta));
-    // double senTetaT = senTeta * (1/closest.kt);
-    // double cosTetaT = sqrt(1 - senTetaT * senTetaT);
-    // double cons = (cosTetaT - ((closest.kt/1) * cosTeta));
-    // Vector T = (((-1 * V) * (closest.kt/1)) - (N * cons)).normalized();
-    // Vector antiBug = N * (cosTeta < 0 ? -1 : 1);
-    // Vector refraction_contrib = phongColour(objList, pontualLights, ambientLight, closest.hit_point, Ray(closest.hit_point + antiBug * t_min, T), 4);
-    // finalColor = finalColor + refraction_contrib;
-
-
-    // if (cosTeta > 0) {
-    //     Nzao = 1 / closest.kt;
-    //     cosTeta = -1 * cosTeta;
-        
-    //     // Primeira relação fundamental da trigonometria, também conhecida como identidade pitagórica trigonométrica:
-    //     // sen² + cos² = 1
-    //     // double senTeta = sqrt(1 - cosTeta*cosTeta);
-    //     // // sen(Teta)/sen(TetaT) = kt_in/kt_out = Nzao
-    //     // double senTetaT = senTeta / Nzao;
-    //     // double cosTetaT = sqrt(1 - senTetaT*senTetaT);
-    //     // cout << "SenTeta = " << senTeta << " CosTeta = " << cosTeta << endl;
-    //     // cout << "SenTetaT = " << senTetaT << " CosTetaT = " << cosTetaT << endl;
-    //     // T = 1/N * V - (cos(TetaT) - ((1/N ) * cos(Teta)) * N)
-    // } else {
-    //     Nzao = closest.kt / 1;
-
-    //     actualNormal = -1 * N;
-    //     // cosTeta = -1 * cosTeta;
-    // }
-    // double k = 1.0 - Nzao * Nzao * (1.0 - cosTeta * cosTeta);
-
-    // if (k > 0) {
-        // Vector T = ((Nzao * I) - (Nzao * cosTeta + sqrt(k)) * actualNormal).normalized();
-        // Vector refraction_contrib = phongColour(objList, pontualLights, ambientLight, closest.hit_point, Ray(closest.hit_point, T), recursionDepth) * closest.kt;
-        // finalColor = finalColor + refraction_contrib;
-    // }
 }
 
 bool inShadow(Point hitPoint, Vector rawL, Vector N, const vector<Hittable*>& objList, double t_min) {
@@ -195,7 +157,7 @@ Vector phongColour(const vector<Hittable*>& objList, const vector<Light::Pontual
     Vector finalColor = Vector(0, 0, 0);
 
     // 1. Componente Ambiente (ka * Ia)
-    finalColor += environmentComponent(closest.ka, ambientLight.getColour());
+    if (closest.ka != Vector{0,0,0}) { finalColor += environmentComponent(closest.ka, ambientLight.getColour()); }
 
     // 2. Componente Difusa e Especular para cada luz pontual
     for (const auto& light : pontualLights) {
@@ -210,13 +172,13 @@ Vector phongColour(const vector<Hittable*>& objList, const vector<Light::Pontual
         bool objInShadow = inShadow(closest.hit_point, rawL, N, objList, t_min);
 
         if (!objInShadow) {
-            finalColor += diffuseComponent(closest.kd, N, L, *light);
+            if (closest.kd != Vector{0,0,0}) { finalColor += diffuseComponent(closest.kd, N, L, *light); }
 
-            finalColor += specularComponent(closest.ks, V, N, L, *light, closest.shininess);
+            if (closest.ks != Vector{0,0,0}) { finalColor += specularComponent(closest.ks, V, N, L, *light, closest.shininess); }
 
-            finalColor += reflectiveComponent(objList, pontualLights, ambientLight, recursionDepth, V, N, closest.hit_point, closest.kr, t_min);
+            if (closest.kr != 0) { finalColor += reflectiveComponent(objList, pontualLights, ambientLight, recursionDepth, V, N, closest.hit_point, closest.kr, t_min); }
 
-            finalColor += refractiveComponent(objList, pontualLights, ambientLight, recursionDepth, N, L, closest.hit_point, 1, closest.kt, t_min);
+            if (closest.kt != 0) { finalColor += refractiveComponent(objList, pontualLights, ambientLight, recursionDepth, N, L, closest.hit_point, 1, closest.kt, t_min); }
         }
     }
     
@@ -278,7 +240,7 @@ void exibir_barra_de_loading(int progresso, int total) {
 }
 
 int main() {
-    string fileName = "currentDraw";
+    string fileName = "italoDemonstration";
     // Camera c = Camera({-0.5, 1.5, 1}, {0, 0, -1}, {0, 1, 0});
     Camera c = Camera({0, 0, 1}, {0, 0, -1}, {0, 1, 0});
     // X -> Para direita ou para esquerda
@@ -325,11 +287,13 @@ int main() {
     // Triangle t1 = Triangle({2,0,0},{0,2,0},{0,0,0},CYAN,RED,BLUE,0,0,0);
 
     // Esferas
-    Sphere s1 = Sphere({2,0.7,-4}, 1, PURPLE, LIGHT_GRAY, BLACK, 8, 0, 0);
-    Sphere s2 = Sphere({1,1,-2}, 1, BROWN/6, ORANGE/3, WHITE, 500, 0, 0.1);
+    // Sphere s1 = Sphere({2,0.2,-4}, 1, BLACK, BLACK, BLACK, 0, 0, 0);
+    Sphere s1 = Sphere({1,0.5,-2}, 0.3, GREEN, GREEN, WHITE, 50, 0.3, 0);
+    Sphere s2 = Sphere({1,0.5,-2}, 1, BLACK, BLACK, BLACK, 0, 0, 0.3);
+    // Sphere s2 = Sphere({1,0.5,-2}, 1, RED, RED, LIGHT_GRAY, 1000, 0, 0.3);
     Sphere s3 = Sphere({-3,-1,-4.7}, 0.5, BLUE, DARK_GRAY, WHITE, 50, 0, 0);
     Sphere s4 = Sphere({-2,1,-2}, 1, YELLOW/6, CYAN/3, GRAY, 30, 0.25, 0);
-    Sphere s5 = Sphere({1.3,-0.3,0}, 0.15, YELLOW, CYAN/3, GRAY, 30, 0.25, 0);
+    // Sphere s5 = Sphere({1.3,-0.3,0}, 0.15, YELLOW, CYAN/3, GRAY, 30, 0.25, 0);
 
     // Sphere sl1 = Sphere(l1.getLocation()+Vector{0,0.05,0}, 0.02, YELLOW, YELLOW, YELLOW, 500, 0, 0);
     // Sphere sl2 = Sphere(l2.getLocation()+Vector{0,0.05,0}, 0.02, YELLOW, YELLOW, YELLOW, 500, 0, 0);
