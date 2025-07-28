@@ -82,13 +82,12 @@ Vector refractiveComponent(const vector<Hittable*>& objList, const vector<Light:
     // I = Exterior -> OBJ
     // N = OBJ -> Exterior
 
-    // double Nzao = destinyRefraction/originRefraction;
     double Nzao = originRefraction / destinyRefraction;
     double cosTeta = dot(N, L);
     double cosTetaT = sqrt(1 - ( (Nzao * Nzao) * (1 - (cosTeta * cosTeta)) ));
     if (cosTeta < 0) { cosTetaT = -cosTetaT; }
     Vector T = ( Nzao * (-1 * L) ) + ( (Nzao * cosTeta) - (cosTetaT) ) * N;
-    Vector antiBug = N * (cosTeta > 0 ? 1 : -1);
+    Vector antiBug = N * (cosTeta > 0 ? -1 : 1);
     Vector refraction_contrib = phongColour(objList, pontualLights, ambientLight, hitPoint, Ray(hitPoint + antiBug * t_min, T), ++recursionDepth);
     return refraction_contrib;
 }
