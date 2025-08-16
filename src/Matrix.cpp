@@ -1,5 +1,5 @@
-#include "Matrix.h"
-#include "Operations.h"
+#include "../include/Matrix.h"
+#include "../include/Operations.h"
 #include <cmath>
 #include <iostream>
 
@@ -119,13 +119,13 @@ void Matrix::buildDiagonal (std::vector<double> valuesList) {
         return;
     }
 
-    for (int i = 0; i < height; ++i) {
-        for (int j = 0; j < width; ++j) {
+    for (size_t i = 0; i < height; ++i) {
+        for (size_t j = 0; j < width; ++j) {
             matrixArray[i][j] = 0;
         }
     }
 
-    for (int i = 0; i < height; ++i) {
+    for (size_t i = 0; i < height; ++i) {
         matrixArray[i][i] = valuesList[i];
     }
 }

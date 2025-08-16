@@ -1,20 +1,23 @@
-#include "Sphere.h"
-#include "Operations.h"
-#include "Ray.h"
+#include "../include/Sphere.h"
+#include "../include/Operations.h"
+#include "../include/Ray.h"
 #include <iostream>
 #include <cmath>
+#include "../include/UniversalVars.h"
+
+using namespace std;
 
 // Construtores
-Sphere::Sphere(Point center, double radius, Vector ka, Vector kd, Vector ks, double shininess, double kr, double kt) :
-    Hittable(ka, kd, ks, shininess, kr, kt),
+Sphere::Sphere(string objName, Point center, double radius, Vector ka, Vector kd, Vector ks, double shininess, double kr, double kt, Texture* visualTexture) :
+    Hittable(objName, ka, kd, ks, shininess, kr, kt, "Sphere", visualTexture),
     center(center),
     radius(radius)
     {}
 
 // Print do vetor no formato (center, radius, <x, y, z>)
-void Sphere::print() {
-    std::cout << "(" << center.getX() << ", " << center.getY() << ", " << center.getZ() << ")" 
-    << ", " << radius << std::endl;
+void Sphere::print() const {
+    std::cout << "Center at <" << center.getX() << ", " << center.getY() << ", " << center.getZ() << ">" 
+    << "; Radius of " << radius << std::endl;
 }
 
 // Getters
@@ -27,6 +30,7 @@ void Sphere::setRadius(double newRadius) { radius = newRadius; }
 
 // Interseção de um vetor com a esfera
 HitRecord Sphere::hit(const Ray& r) const {
+    Vector normal = {};
     // // Equação da esfera: (x-c1)² + (y-c2)² + (z-c3)² = r²,
     // Equação da esfera: |P - C|² = r²,
     // onde P é u ponto da superfície da esfera, C é o seu centro e r é o seu raio
@@ -38,37 +42,31 @@ HitRecord Sphere::hit(const Ray& r) const {
     // (d . d)t² + 2(d . OC)t + (OC . OC) - r² = 0 -> Equação quadrática na forma at²+bt+c=0.
     // Discriminante de uma equação de segundo grau: b² - 4ac.
 
-    Vector oc = r.origin() - getCenter();
-    double a = dot(r.direction(), r.direction());
-    double b = 2.0 * dot(r.direction(), oc);
+    Vector oc = r.origin - getCenter();
+    double a = dot(r.direction, r.direction);
+    double b = 2.0 * dot(r.direction, oc);
     double c = dot(oc, oc) - (getRadius() * getRadius());
 
     double discriminant = b * b - 4 * a * c;
     // Se o discriminante for < 0 então não temos raízes reais, ou seja não há interseção
-    if (discriminant < 0) { return {}; }
+    if (discriminant < 0) { return HitRecord{}; }
     
-    HitRecord rec;
+    bool hitForReal = false;
+    HitRecord rec{};
     // t1 e t2 são os valores de t que satisfazem a(s) interseção(ões)
     double t1;
+    double tres;
     // Um pequeno epsilon (t_min) para evitar artefatos de precisão (z-fighting)
     // Epsilon é importante para evitar que objetos "encostando" na câmera ou um no outro
     // causem problemas de interseção.
-    double t_min = 0.00001;
     // Se o discriminante for = 0 então temos apenas uma raíz, ou seja há interseção
     if (discriminant == 0) {
         t1 = (-b) / (2 * a);
         if (t1 > t_min) {
-            rec.t = t1;
-            rec.hit_point = r.origin() + (rec.t * r.direction());
-            rec.normal = (rec.hit_point - getCenter()).normalized();
-            rec.ka = getka();
-            rec.ks = getks();
-            rec.kd = getkd();
-            rec.kr = getkr();
-            rec.kt = getkt();
-            rec.shininess = getshininess();
+            hitForReal = true;
+            tres = t1;
         } else {
-            return {};
+            return HitRecord{};
         }
     } else {
         // Se o discriminante for > 0 então temos duas raízes, ou seja há interseção
@@ -76,27 +74,63 @@ HitRecord Sphere::hit(const Ray& r) const {
         double t2 = t1 = root;
         t1 = (-b + t1) / (2 * a);
         t2 = (-b - t2) / (2 * a);
-        double tres = t1 < t2 ? t1 : t2;
+        tres = t1 < t2 ? t1 : t2;
         if (tres > t_min) {
-            rec.t = tres;
-            rec.hit_point = r.origin() + (rec.t * r.direction());
-            rec.normal = (rec.hit_point - getCenter()).normalized();
-            rec.ka = getka();
-            rec.ks = getks();
-            rec.kd = getkd();
-            rec.kr = getkr();
-            rec.kt = getkt();
-            rec.shininess = getshininess();
+            hitForReal = true;
         } else {
-            return {};
+            return HitRecord{};
         }
+    }
+
+    if (hitForReal) {
+        rec.hit_point = r.origin + tres * r.direction;
+        normal = (rec.hit_point - getCenter()).normalized();
+        rec.normal = dot(r.direction, normal) < 0 ? normal : -1 * normal;
+        if (visualTexture) {
+            double u = (atan2(rec.normal.getZ(), rec.normal.getX()) + M_PI) / (2 * M_PI);
+            double v = 0.5 - (asin(rec.normal.getY()) / M_PI);
+            rec.kd = visualTexture->value({u, v});
+        } else {
+            rec.kd = getkd();
+        }
+        rec.ka = getka();
+        rec.ks = getks();
+        rec.t = t1;
+        rec.kr = getkr();
+        rec.kt = getkt();
+        rec.shininess = getshininess();
+        rec.obj = this;
     }
     
     return rec;
 }
 
-void Sphere::rotateAll(double angle) {}
-void Sphere::rotateX(double angle) {}
-void Sphere::rotateY(double angle) {}
-void Sphere::rotateZ(double angle) {}
-void Sphere::transfer(Vector distances) {}
+void Sphere::rotateAll(double angle) {
+    cout << angle << "TODO SPHERE!" << endl;
+}
+void Sphere::rotateX(double angle) {
+    cout << angle << "TODO SPHERE!" << endl;
+}
+void Sphere::rotateY(double angle) {
+    cout << angle << "TODO SPHERE!" << endl;
+}
+void Sphere::rotateZ(double angle) {
+    cout << angle << "TODO SPHERE!" << endl;
+}
+void Sphere::transfer(Vector distances) {
+    cout << "TODO SPHERE!" << endl;
+    distances.print();
+}
+
+Hittable* Sphere::clone() const {
+    return new Sphere(*this);
+}
+
+BoundingBox Sphere::getBoundingBox() const {
+    double r = getRadius();
+    Point c = getCenter();
+    return BoundingBox(
+        Point(c.getX() - r, c.getY() - r, c.getZ() - r),
+        Point(c.getX() + r, c.getY() + r, c.getZ() + r)
+    );
+}

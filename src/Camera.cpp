@@ -1,10 +1,13 @@
-#include "Camera.h"
-#include "Operations.h"
+#include "../include/Camera.h"
+#include "../include/Operations.h"
 #include <cmath>
 #include <iostream>
 
+using namespace std;
+
 // Construtores
-Camera::Camera(const Point& location, const Point& pointingAt, const Vector& worldUp, double distance, unsigned int h_res, unsigned int v_res, double aspectRatio, double fieldOfView) :
+Camera::Camera(string cameraName, const Point& location, const Point& pointingAt, const Vector& worldUp, double distance, unsigned int h_res, unsigned int v_res, double aspectRatio, double fieldOfView) :
+    cameraName(cameraName),
     location(location), 
     pointingAt(pointingAt), 
     worldUp(worldUp), 
@@ -15,7 +18,8 @@ Camera::Camera(const Point& location, const Point& pointingAt, const Vector& wor
     fieldOfView(fieldOfView), 
     U(0, 0, 0), 
     V(0, 0, 0), 
-    W(0, 0, 0) {
+    W(0, 0, 0),
+    type("Camera") {
     
     // Define a proporção padrão se não for fornecida (ou for inválida)
     double effectiveAspectRatio = (this->aspectRatio > 0) ? this->aspectRatio : (16.0 / 9.0); // 16:9 como padrão
@@ -72,6 +76,9 @@ Vector Camera::getU() const { return U; } // Vetor "direita"
 Vector Camera::getV() const { return V; } // Vetor "para cima" real
 Vector Camera::getW() const { return W; } // Vetor "para trás"
 Screen Camera::getScreen() const { return screen; }
+string Camera::getName() const { return cameraName; }
+string Camera::getType() const { return type; }
+double Camera::getAspectRatio() const { return aspectRatio; }
 
 // Setters
 void Camera::setLocation(const Point& loc) {
@@ -113,4 +120,16 @@ void Camera::createScreen(const Point& p, Vector horizontal, Vector vertical) {
     screen.lower_left_corner = p;
     screen.horizontal = horizontal;
     screen.vertical = vertical;
+}
+
+// Print da camera
+void Camera::print() const {
+    cout << type << "(" << getName() << "): " << endl;
+    cout << "location: "; getLocation().print();
+    cout << "pointingAt: "; getPointingAt().print();
+    cout << "worldUp: "; getVectorUp().print();
+    cout << "h_res: " << getHRes() << endl;
+    cout << "v_res: " << getVRes() << endl;
+    cout << "aspectRatio: " << getAspectRatio() << endl;
+    cout << "fieldOfView: " << getFOV() << endl;
 }

@@ -1,10 +1,12 @@
-#include "Rectangle.h"
-#include "Operations.h"
-#include "Matrix.h"
+#include "../include/Rectangle.h"
+#include "../include/Operations.h"
+#include "../include/Matrix.h"
 #include <iostream>
 
-Rectangle::Rectangle(Point p0_in, double width, double length, Vector ka, Vector kd, Vector ks, double shininess, double kr, double kt) :
-    Hittable(ka, kd, ks, shininess, kr, kt),
+using namespace std;
+
+Rectangle::Rectangle(string objName, Point p0_in, double width, double length, Vector ka, Vector kd, Vector ks, double shininess, double kr, double kt) :
+    Hittable(objName, ka, kd, ks, shininess, kr, kt, "Rectangle"),
     p0(p0_in)
 {
     // Largura vai no X
@@ -36,24 +38,24 @@ void Rectangle::setLength(double newLength) { edgeV = Vector(0, newLength, 0); }
 void Rectangle::setNormal(Vector newNormal) { normal = newNormal; }
 
 HitRecord Rectangle::hit(const Ray& r) const {
-    HitRecord rec;
+    HitRecord rec{};
 
-    double denom = dot(r.direction(), normal);
+    double denom = dot(r.direction, normal);
     if (denom == 0)
-        return {}; // Raio paralelo
+        return HitRecord{}; // Raio paralelo
 
-    double t = dot(p0 - r.origin(), normal) / denom;
+    double t = dot(p0 - r.origin, normal) / denom;
     if (t < 0)
-        return {}; // Atrás do olho
+        return HitRecord{}; // Atrás do olho
 
-    Point p = r.point_at_parameter(t);
+    Point p = r.origin + t * r.direction;
     Vector d = p - p0;
 
     double u = dot(d, edgeU.normalized());
     double v = dot(d, edgeV.normalized());
 
     if (u < 0 || u > edgeU.magnitude() || v < 0 || v > edgeV.magnitude())
-        return {}; // Fora do retângulo
+        return HitRecord{}; // Fora do retângulo
 
     rec.t = t;
     rec.hit_point = p;
@@ -63,6 +65,7 @@ HitRecord Rectangle::hit(const Ray& r) const {
     rec.kr = getkr();
     rec.kt = getkt();
     rec.shininess = getshininess();
+    rec.obj = this;
 
     // Normal sempre apontando para fora
     rec.normal = (denom < 0) ? normal : -1 * normal;
@@ -146,7 +149,7 @@ void Rectangle::rotateZ(double angle) {
 }
 
 void Rectangle::rotateAll(double angle) {
-
+    cout << angle << "TODO RECTANGLE!" << endl;
 }
 
 void Rectangle::transfer(Vector d) {
@@ -158,4 +161,15 @@ void Rectangle::print() const {
               << "), Width: " << edgeU.magnitude()
               << ", Length: " << edgeV.magnitude()
               << ">" << std::endl;
+}
+
+Hittable* Rectangle::clone() const {
+    return new Rectangle(*this);
+}
+
+BoundingBox Rectangle::getBoundingBox() const {
+    return BoundingBox(
+        getP0(),
+        getP0()+getWidth()+getLength()
+    );
 }

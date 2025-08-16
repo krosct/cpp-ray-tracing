@@ -1,23 +1,24 @@
-#include "Cube.h"
-#include "Triangle.h"
-#include "Operations.h"
-#include "Ray.h"
+#include "../include/Cube.h"
+#include "../include/Triangle.h"
+#include "../include/Operations.h"
+#include "../include/Ray.h"
 #include <iostream>
 #include <vector>
 
+using namespace std;
+
 // Construtores
-Cube::Cube(Point a, Point b, Vector ka, Vector kd, Vector ks, double shininess, double kr, double kt, bool internal) :
-    Hittable(ka, kd, ks, shininess, kr, kt),
+Cube::Cube(string objName, Point a, Point b, Vector ka, Vector kd, Vector ks, double shininess, double kr, double kt, Texture* visualTexture, Texture* heightTexture) :
+    Hittable(objName, ka, kd, ks, shininess, kr, kt, "Cube", visualTexture, heightTexture),
     a(a),
-    b(b),
-    internal(internal) { recalculatePoints(); }
+    b(b) { resetPoints(); }
 
     
 void Cube::addTriangle(Point a1, Point b1, Point c1) {
-    triangles.push_back({a1,b1,c1,getka(),getkd(),getks(),getshininess(),getkr(),getkt()});
+    triangles.push_back(Triangle("tempTriangle",a1,b1,c1,getka(),getkd(),getks(),getshininess(),getkr(),getkt(), visualTexture, heightTexture));
 }
 
-void Cube::recalculatePoints() {
+void Cube::resetPoints() {
     Vector left = a - b;
     double edgeLength = left.magnitude();
     Vector forward = cross(left, {0,1,0}).normalized();
@@ -30,33 +31,22 @@ void Cube::recalculatePoints() {
     g = c + up;
     h = d + up;
 
-    resetTriangles();
-    addTriangle(f,b,a);
-    addTriangle(a,e,f);
-    addTriangle(e,a,d);
-    addTriangle(d,h,e);
-    addTriangle(h,d,c);
-    addTriangle(c,g,h);
-    addTriangle(g,c,b);
-    addTriangle(b,f,g);
-    addTriangle(g,f,e);
-    addTriangle(e,h,g);
-    addTriangle(b,c,d);
-    addTriangle(d,a,b);
-    bool test = internal;
-    if (internal) {
-        for (auto& t : triangles) {
-            Point newA = t.getC();
-            Point newC = t.getA();
-            t.setA(newA);
-            t.setC(newC);
-            t.recalculateNormal();
-        }
-    }
+    triangles.clear();
+    addTriangle(a,b,f);
+    addTriangle(f,e,a);
+    addTriangle(d,a,e);
+    addTriangle(e,h,d);
+    addTriangle(c,d,h);
+    addTriangle(h,g,c);
+    addTriangle(b,c,g);
+    addTriangle(g,f,b);
+    addTriangle(e,f,g);
+    addTriangle(g,h,e);
+    addTriangle(d,c,b);
+    addTriangle(b,a,d);
 }
 
-// Print do triangulo no formato <(x1, y1, z1), (x2, y2, z2), (x3, y3, 3z)>
-void Cube::print() {
+void Cube::print() const {
     std::cout << "<" << 
     "(" << a.getX() << ", " << a.getY() << ", " << a.getZ() << ")" << 
     "(" << b.getX() << ", " << b.getY() << ", " << b.getZ() << ")" << 
@@ -73,6 +63,11 @@ void Cube::print() {
 const Point& Cube::getA() const { return a; }
 const Point& Cube::getB() const { return b; }
 const Point& Cube::getC() const { return c; }
+const Point& Cube::getD() const { return d; }
+const Point& Cube::getE() const { return e; }
+const Point& Cube::getF() const { return f; }
+const Point& Cube::getG() const { return g; }
+const Point& Cube::getH() const { return h; }
 vector<Triangle>& Cube::getTriangles() { return triangles; }
 const Point Cube::getCentroid() const {
     Vector forward = c - b;
@@ -83,6 +78,10 @@ const Point Cube::getCentroid() const {
 
 // Interseção de um vetor com o triangulo
 HitRecord Cube::hit(const Ray& r) const {
+    if (!getBoundingBox().hit(r)) {
+        return HitRecord{};
+    }
+
     HitRecord closest{};
     HitRecord rec{};
 
@@ -98,13 +97,12 @@ HitRecord Cube::hit(const Ray& r) const {
         return HitRecord{};
     }
 
-    double t_min = 0.00001;
-    HitRecord shadowRec;
+    HitRecord shadowRec{};
     Point start = closest.hit_point + closest.normal * t_min;
-    Ray shadowRay(start, r.origin() - start);
+    Ray shadowRay(start, r.origin - start);
 
     bool inShadow = false;
-    double lightDistance = (r.origin() - start).magnitude(); 
+    double lightDistance = (r.origin - start).magnitude(); 
 
     for (auto& triangle : triangles) {
         shadowRec = triangle.hit(shadowRay);
@@ -121,25 +119,61 @@ HitRecord Cube::hit(const Ray& r) const {
     if (inShadow) {
         return HitRecord{};
     } else {
+        if (visualTexture) {
+            double u = 0, v = 0;
+            double absX = std::abs(closest.normal.getX());
+            double absY = std::abs(closest.normal.getY());
+            double absZ = std::abs(closest.normal.getZ());
+
+            if (absX > absY && absX > absZ) { // Face Esquerda ou Direita (+X ou -X)
+                u = closest.hit_point.getZ();
+                v = closest.hit_point.getY();
+            } else if (absY > absZ) {         // Face de Cima ou de Baixo (+Y ou -Y)
+                u = closest.hit_point.getX();
+                v = closest.hit_point.getZ();
+            } else {                          // Face da Frente ou de Trás (+Z ou -Z)
+                u = closest.hit_point.getX();
+                v = closest.hit_point.getY();
+            }
+
+            double edgeLength = (a - b).magnitude();
+            u = (u / edgeLength) + 0.5;
+            v = (v / edgeLength) + 0.5;
+            closest.kd = visualTexture->value({u, v});
+        }
         return closest;
     }
 }
 
-void Cube::resetTriangles() {
-    triangles.clear();
+Hittable* Cube::clone() const {
+    return new Cube(*this);
 }
 
+BoundingBox Cube::getBoundingBox() const {
+    return BoundingBox(
+        getA(),
+        getG()
+    );
+}
+
+// Todo: Todo functions
 void Cube::rotateAll(double angle) {
+    cout << angle << "TODO CUBE!" << endl;
 }
 
 void Cube::rotateX(double angle) {
+    cout << angle << "TODO CUBE!" << endl;
 }
 
 void Cube::rotateY(double angle) {
+    cout << angle << "TODO CUBE!" << endl;
 }
 
 void Cube::rotateZ(double angle) {
+    cout << angle << "TODO CUBE!" << endl;
 }
 
 void Cube::transfer(Vector distances){
+    cout << "TODO CUBE!" << endl;
+    distances.print();
 }
